@@ -18,7 +18,7 @@ When installed into Bub's environment (for example `bub install bub-walkman`), `
 
 ## Live and replay
 
-- **Live** (toggle at the right of the playback bar, on by default):
+- **Live** (toggle at the right of the playback bar, on by default; it reads **Stop Live** while live):
   - Follows the file over SSE as Bub writes it.
   - Disables play, step, and the progress slider while active.
   - Shows a running timer on a step that has started but not finished. Bub writes a step's messages and tool calls only when the step ends, so they show up all at once.
@@ -42,7 +42,7 @@ The page has two panes (on narrow screens, the panes take turns with a back butt
 
 ## Anchors
 
-- Listed in the **Anchors** picker in the top bar and shown as purple ticks on the track.
+- Listed in the **Anchors** picker at the top of the turn list and shown as purple ticks on the track.
 - Picking an anchor selects the turn that contains it and scrolls to it.
 - In replay, picking an anchor also seeks there and pauses, so playback continues from that anchor.
 

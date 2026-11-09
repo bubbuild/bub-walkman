@@ -225,6 +225,12 @@ kbd { font-family: var(--mono); font-size: 12px; line-height: 16px; border: 1px 
 .back { display: none; }
 
 .turn-list { padding: 0 8px 40px; }
+/* anchor picker pinned at the top of the turn list; the day headers stick right below it */
+.list-head { position: sticky; top: 0; z-index: 2; padding: 10px 8px 6px; background: var(--panel); }
+.list-head .anchor-pick { width: 100%; max-width: none; }
+.list-head .anchor-pick .ctl-label { flex: 1; text-align: left; }
+.anchor-pos .pop { min-width: var(--anchor-width); }
+.list-pane.has-head .day-sep { top: 48px; }
 .day-sep { position: sticky; top: 0; z-index: 1; padding: 12px 10px 4px; font-size: 12px; font-weight: 600; color: var(--muted); background: var(--panel); }
 .li { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 9px 10px; border: 0; border-radius: var(--r-lg); background: none; text-align: left; cursor: pointer; color: var(--text); }
 .li:hover { background: var(--hover); }
@@ -546,7 +552,6 @@ div.tools > .tool + .tool { border-top: 1px solid var(--line); }
   .main { border-radius: 0; box-shadow: none; outline: 0; }
   .status { display: none; }
   .topbar { gap: 8px; padding: 10px 12px; }
-  .anchor-pick { max-width: 150px; }
   .transport { flex-wrap: wrap; gap: 8px 12px; padding: 8px 12px; }
   /* one pane at a time: the list, or the selected item with a way back */
   .list-pane { width: auto; flex: 1; border-right: 0; }

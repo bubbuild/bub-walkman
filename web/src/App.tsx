@@ -26,7 +26,7 @@ import {
 type Mode = "live" | "replay";
 
 const IDLE_CAP = 2000;
-const SPEEDS = [1, 2, 4, 10, 25, 100];
+const SPEEDS = [1, 2, 4, 8, 16, 32, 100];
 const DEFAULT_OPTS: ViewOptions = { system: false, reasoning: true, events: false, expandTools: false };
 
 function eventName(e: Entry | undefined): string {
@@ -46,7 +46,8 @@ export default function App({ name: tapeName, onNavigate }: { name: string; onNa
   const [mode, setModeState] = useState<Mode>(initialMode);
   const [opts, setOpts] = usePersistent<ViewOptions>("opts", DEFAULT_OPTS);
   const [theme, setTheme] = usePersistent<string>("theme", "");
-  const [speed, setSpeed] = usePersistent<number>("speed", 4);
+  const [storedSpeed, setSpeed] = usePersistent<number>("speed", 4);
+  const speed = SPEEDS.includes(storedSpeed) ? storedSpeed : 4; // a speed saved before the list changed
   const [skipIdle, setSkipIdle] = usePersistent<boolean>("skipIdle", true);
   const [autoscroll, setAutoscroll] = usePersistent<boolean>("autoscroll", true);
   const viewOpts = useMemo(() => ({ ...DEFAULT_OPTS, ...opts }), [opts]);
@@ -432,7 +433,6 @@ export default function App({ name: tapeName, onNavigate }: { name: string; onNa
             >
               <SearchIcon />
             </button>
-            {anchors.length > 0 && <AnchorPicker anchors={anchors} passed={(a) => mode === "replay" && a.i < shown} onPick={goAnchor} />}
             <div className={`status ${status.cls}`}>
               <span className="dot" />
               {status.text}
@@ -477,7 +477,12 @@ export default function App({ name: tapeName, onNavigate }: { name: string; onNa
 
           <div className={`content ${searchOpen ? "with-search" : ""}`}>
           <div className={`panes ${showDetail ? "show-detail" : ""}`}>
-          <aside className="list-pane" ref={listRef}>
+          <aside className={`list-pane ${anchors.length ? "has-head" : ""}`} ref={listRef}>
+            {anchors.length > 0 && (
+              <div className="list-head">
+                <AnchorPicker anchors={anchors} passed={(a) => mode === "replay" && a.i < shown} onPick={goAnchor} />
+              </div>
+            )}
             <TurnList items={tl.items} opts={viewOpts} selected={selected?.id ?? null} onSelect={pick} version={tl.version} />
           </aside>
           <section className="detail-pane timeline-wrap" ref={scroller} onScroll={onScroll}>
@@ -580,7 +585,7 @@ export default function App({ name: tapeName, onNavigate }: { name: string; onNa
               title={live ? "Stop following the tape (L)" : "Follow the tape as it is written (L)"}
             >
               <span className="live-dot" />
-              Live
+              {live ? "Stop Live" : "Live"}
             </Toggle>
           </footer>
         </main>

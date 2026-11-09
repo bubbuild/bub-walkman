@@ -80,7 +80,7 @@ export function AnchorPicker({ anchors, passed, onPick }: { anchors: AnchorRef[]
         </Select.Icon>
       </Select.Trigger>
       <Select.Portal>
-        <Select.Positioner className="pop-pos" sideOffset={6} align="end" alignItemWithTrigger={false}>
+        <Select.Positioner className="pop-pos anchor-pos" sideOffset={6} align="start" alignItemWithTrigger={false}>
           <Select.Popup className="pop">
             <Select.List className="pop-list">
               {anchors.map((a) => (
