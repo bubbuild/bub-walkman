@@ -5,12 +5,12 @@ Play a [Bub](https://github.com/bubbuild/bub) tape (JSONL log) as an agent timel
 ## Usage
 
 ```bash
-bub-walkman                 # pick a tape on the page; running ones are listed first
-bub-walkman <tape>          # a tape name in Bub's tape directory, with or without .jsonl
-bub-walkman ~/.bub/tapes/<tape>.jsonl
+uvx bub-walkman                 # pick a tape on the page; running ones are listed first
+uvx bub-walkman <tape>          # a tape name in Bub's tape directory, with or without .jsonl
+uvx bub-walkman ~/.bub/tapes/<tape>.jsonl
 ```
 
-When installed into Bub's environment (for example `bub install <git URL of this repo>`), `bub-walkman` also works as a Bub plugin via `bub walkman <tape>`.
+When installed into Bub's environment (for example `bub install bub-walkman`), `bub-walkman` also works as a Bub plugin via `bub walkman <tape>`.
 
 - **Tape directory**: `bub.home / "tapes"` when Bub is installed, otherwise `$BUB_HOME/tapes` (default `~/.bub/tapes`).
 - **Server**: starts a local server at `http://localhost:7357` by default (or a free port if `7357` is taken) and opens the page in the browser.
@@ -71,16 +71,16 @@ Without a tape argument, the page lists every tape in Bub's tape directory, refr
 
 ## Keyboard shortcuts
 
-| Key | Action |
-| --- | --- |
-| `/` or `⌘F` / `Ctrl+F` | Search |
-| `Space` | Play / pause |
-| `←` / `→` | Previous / next step |
-| `⇧←` / `⇧→` | Previous / next turn |
-| `Home` / `End` | Jump to the start / end (replay) |
-| `J` / `K` | Next / previous turn in the list |
-| `[` / `]` | Previous / next anchor |
-| `L` | Live on / off |
+| Key                    | Action                           |
+| ---------------------- | -------------------------------- |
+| `/` or `⌘F` / `Ctrl+F` | Search                           |
+| `Space`                | Play / pause                     |
+| `←` / `→`              | Previous / next step             |
+| `⇧←` / `⇧→`            | Previous / next turn             |
+| `Home` / `End`         | Jump to the start / end (replay) |
+| `J` / `K`              | Next / previous turn in the list |
+| `[` / `]`              | Previous / next anchor           |
+| `L`                    | Live on / off                    |
 
 ## Development
 
