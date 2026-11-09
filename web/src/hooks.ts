@@ -4,7 +4,9 @@ import type { Entry } from "./model";
 export interface TapeInfo {
   name: string;
   path: string;
-  size: number;
+  /** Bytes on disk; null for a tape in a (non-file) Bub tape store. */
+  size: number | null;
+  entries?: number;
   mtime: number;
 }
 
@@ -32,7 +34,7 @@ export function apiUrl(path: string, params: Record<string, string | number> = {
   return `${path}?${q}`;
 }
 
-/** Loads the tape snapshot, then tails it over SSE (reconnecting from the last byte offset). */
+/** Loads the tape snapshot, then tails it over SSE (reconnecting from the last offset: bytes for files, entries for stores). */
 export function useTape(name: string): TapeData {
   const entries = useRef<Entry[]>([]);
   const offset = useRef(0);
@@ -82,7 +84,7 @@ export function useTape(name: string): TapeData {
         if (append(data.entries)) {
           setState((s) => ({
             ...s,
-            info: s.info && { ...s.info, size: data.offset },
+            info: s.info && { ...s.info, size: data.size ?? null },
             version: s.version + 1,
             lastUpdate: Date.now(),
           }));
@@ -171,13 +173,15 @@ export type TapeStatus = "running" | "recent" | "idle";
 
 export interface TapeSummary {
   name: string;
-  size: number;
+  /** Bytes on disk; null for a tape in a (non-file) Bub tape store, which counts `entries` instead. */
+  size: number | null;
+  entries?: number;
   mtime: number;
   status: TapeStatus;
   /** Prompt of the latest turn (truncated). */
   prompt: string;
   last: string;
-  sidecars: Array<{ name: string; size: number }>;
+  sidecars: Array<{ name: string; size: number | null; entries?: number }>;
   /** False for a tape given on the command line from outside the tape directory. */
   deletable: boolean;
 }

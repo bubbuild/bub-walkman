@@ -58,10 +58,11 @@ def _version(value: bool) -> None:
 
 
 def walkman(
+    ctx: typer.Context,
     tape: Annotated[
         Path | None,
         typer.Argument(
-            help="Tape .jsonl file, or the name of a tape in Bub's tape directory. Without one, the page lists the tapes "
+            help="Tape .jsonl file, or the name of a tape in Bub's tape store. Without one, the page lists the tapes "
             "(running ones first) to pick from.",
             show_default=False,
         ),
@@ -69,30 +70,38 @@ def walkman(
     host: Annotated[str, typer.Option(help="Bind address.")] = "127.0.0.1",
     port: Annotated[int, typer.Option(help="Port; falls back to a free one when taken.")] = 7357,
     open_browser: Annotated[bool, typer.Option("--open/--no-open", help="Open the page in a browser.")] = True,
-    version: Annotated[
-        bool | None, typer.Option("--version", callback=_version, is_eager=True, help="Show the version and exit.")
-    ] = None,
+    version: Annotated[bool | None, typer.Option("--version", callback=_version, is_eager=True, help="Show the version and exit.")] = None,
 ) -> None:
     """Render a Bub tape as an agent timeline in the browser. Live following and replay are controlled from the web page."""
     import uvicorn
 
     from .server import create_app
+    from .sources import BubSource, FileSource, TapeSource
 
+    # As `bub walkman`, Bub passes its framework: read tapes from whatever tape store Bub is configured with.
+    framework = ctx.obj if hasattr(ctx.obj, "get_tape_store") and hasattr(ctx.obj, "running") else None
     directory = tapes_dir()
     path = None
+    name = None
     if tape is not None:
         path = resolve_tape(tape)
-        if path is None:
+        if path is not None:
+            name = path.stem
+        elif framework is not None and len(tape.parts) == 1:
+            name = tape.name.removesuffix(".jsonl")  # a tape in the store; the page says so if there is none
+        else:
             typer.echo(f"bub-walkman: tape not found: {tape} (also looked in {directory})", err=True)
             raise typer.Exit(2)
 
+    source: TapeSource = BubSource(framework, directory, path) if framework is not None else FileSource(directory, path)
     sock = _bind(host, port)
     bound = sock.getsockname()[1]
     shown = "localhost" if host in ("127.0.0.1", "0.0.0.0", "::") else host
-    url = f"http://{shown}:{bound}/" + (f"?tape={quote(path.stem)}" if path else "")
-    typer.echo(f"bub-walkman  {path.name if path else directory}\n  {url}\n  Ctrl+C to stop")
+    url = f"http://{shown}:{bound}/" + (f"?tape={quote(name)}" if name else "")
+    where = path.name if path else name or ("Bub's tape store" if framework is not None else directory)
+    typer.echo(f"bub-walkman  {where}\n  {url}\n  Ctrl+C to stop")
 
-    app = create_app(directory, path)
+    app = create_app(source)
 
     class Server(uvicorn.Server):
         @override
