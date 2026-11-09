@@ -106,8 +106,8 @@ def test_tape_directory_status(tmp_path: Path) -> None:
     outside.write_text(line(1))
 
     d = TapeDirectory(tmp_path, outside)
-    listed = {t["name"]: t for t in d.list(now)}
-    assert [t["name"] for t in d.list(now)][:2] == ["open", "continuing"]
+    listed = {t["name"]: t for t in d.summaries(now)}
+    assert [t["name"] for t in d.summaries(now)][:2] == ["open", "continuing"]
     assert {k: v["status"] for k, v in listed.items()} == {
         "open": "running",
         "continuing": "running",
@@ -120,7 +120,7 @@ def test_tape_directory_status(tmp_path: Path) -> None:
     assert listed["open"]["prompt"] == "do it"
     wrapped = "channel=$t|chat_id=1\n" + "x" * 5000 + "\n<user_request>\nfix it\n</user_request>"
     tape("wrapped", 5, line(1, name="loop.start", data={"prompt": wrapped}))
-    assert {t["name"]: t for t in d.list(now)}["wrapped"]["prompt"] == "channel=$t|chat_id=1\n<user_request>\nfix it\n</user_request>"
+    assert {t["name"]: t for t in d.summaries(now)}["wrapped"]["prompt"] == "channel=$t|chat_id=1\n<user_request>\nfix it\n</user_request>"
     assert d.resolve("given") == outside and d.resolve("open") == tmp_path / "open.jsonl"
 
 

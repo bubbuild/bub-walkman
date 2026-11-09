@@ -83,7 +83,7 @@ def create_app(tapes_dir: Path, tape: Path | None = None) -> Starlette:
         return FileResponse(icon, media_type="image/svg+xml", headers={"Cache-Control": "max-age=86400"})
 
     async def tapes(request: Request) -> Response:
-        items = await asyncio.to_thread(directory.list)
+        items = await asyncio.to_thread(directory.summaries)
         return JSONResponse({"directory": shown_dir, "tapes": items}, headers={"Cache-Control": "no-store"})
 
     async def delete(request: Request) -> Response:

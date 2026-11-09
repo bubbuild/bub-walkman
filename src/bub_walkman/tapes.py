@@ -190,7 +190,7 @@ class TapeDirectory:
         path = self.directory / f"{name}.jsonl"
         return path if path.is_file() and is_main_tape(path) else None
 
-    def list(self, now: float | None = None) -> list[TapeSummary]:
+    def summaries(self, now: float | None = None) -> list[TapeSummary]:
         now = time.time() if now is None else now
         paths = sorted(self.directory.glob("*.jsonl")) if self.directory.is_dir() else []
         sidecars: dict[str, list[dict[str, Any]]] = {}
@@ -247,7 +247,7 @@ class TapeDirectory:
 
         Returns the deleted file names and an error message per tape that was not deleted.
         """
-        status = {t["name"]: t["status"] for t in self.list()}
+        status = {t["name"]: t["status"] for t in self.summaries()}
         deleted: list[str] = []
         errors: dict[str, str] = {}
         for name in names:
