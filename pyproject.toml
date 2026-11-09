@@ -1,0 +1,52 @@
+[project]
+name = "bub-walkman"
+dynamic = ["version"]
+description = "Render Bub tapes as an agent timeline in the browser, live or replayed."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Frost Ming", email = "me@frostming.com" }]
+dependencies = [
+    "starlette>=0.40",
+    "typer>=0.12",
+    "uvicorn>=0.30",
+    "watchfiles>=0.22",
+]
+
+[project.scripts]
+bub-walkman = "bub_walkman.cli:main"
+
+# With Bub installed, adds the `bub walkman` command.
+[project.entry-points.bub]
+walkman = "bub_walkman.plugin"
+
+[dependency-groups]
+dev = ["pytest>=8", "httpx2"]
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+# The version comes from the git tag (vX.Y.Z); see .github/workflows/release.yml.
+[tool.hatch.version]
+source = "vcs"
+fallback-version = "0.0.0"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bub_walkman"]
+# The web UI is built into src/bub_walkman/static (gitignored) by `pnpm -C web build`.
+artifacts = ["src/bub_walkman/static/**"]
+
+[tool.hatch.build.targets.sdist]
+artifacts = ["src/bub_walkman/static/**"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 140
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

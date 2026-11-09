@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+dist/
+web/node_modules/
+src/bub_walkman/static/
+*.tsbuildinfo
