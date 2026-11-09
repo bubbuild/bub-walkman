@@ -13,6 +13,13 @@ const GROUPS = [
   { status: "idle", label: "Older" },
 ] as const;
 
+/** Total size of tapes: bytes for files, entries for tapes in a Bub tape store (which has no byte sizes). */
+function amount(items: Array<{ size: number | null; entries?: number }>): string {
+  if (items.every((i) => i.size != null)) return bytes(items.reduce((n, i) => n + (i.size ?? 0), 0));
+  const n = items.reduce((sum, i) => sum + (i.entries ?? 0), 0);
+  return `${n.toLocaleString()} entr${n === 1 ? "y" : "ies"}`;
+}
+
 function describe(t: TapeSummary) {
   const p = parsePrompt(t.prompt);
   const headline = p.headline.replace(/\s+/g, " ").trim();
@@ -55,7 +62,7 @@ function TapeRow({
   const { headline, channel } = describe(tape);
   const selecting = manage?.selecting ?? false;
   const checked = manage?.selected.has(tape.name) ?? false;
-  const size = tape.size + tape.sidecars.reduce((n, s) => n + s.size, 0);
+  const size = amount([tape, ...tape.sidecars]);
   return (
     <div className={`tape-row ${tape.status} ${current ? "current" : ""} ${checked ? "checked" : ""}`} data-tape={tape.name}>
       {selecting && (
@@ -88,7 +95,7 @@ function TapeRow({
         <span className="tape-side">
           <span className="tape-when">{tape.status === "running" ? "running" : ago(tape.mtime * 1000, now)}</span>
           <span className="tape-size" title={tape.sidecars.length ? "tape and sidecars" : undefined}>
-            {bytes(size)}
+            {size}
           </span>
         </span>
       </button>
@@ -128,8 +135,9 @@ function DeleteDialog({ tapes, onClose, onDeleted }: { tapes: TapeSummary[]; onC
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string> | null>(null);
   const running = tapes.filter((t) => t.status === "running");
-  const files = tapes.flatMap((t) => [{ name: `${t.name}.jsonl`, size: t.size }, ...t.sidecars]);
-  const total = files.reduce((n, f) => n + f.size, 0);
+  // Files on disk, or tapes in a Bub tape store (no size; they are reset there).
+  const inStore = tapes.some((t) => t.size == null);
+  const files = tapes.flatMap((t) => [{ name: inStore ? t.name : `${t.name}.jsonl`, size: t.size, entries: t.entries }, ...t.sidecars]);
   const one = tapes.length === 1;
   const confirm = async () => {
     setBusy(true);
@@ -158,8 +166,9 @@ function DeleteDialog({ tapes, onClose, onDeleted }: { tapes: TapeSummary[]; onC
         <AlertDialog.Popup className="dialog">
           <AlertDialog.Title className="dialog-title">{one ? "Delete this tape?" : `Delete ${tapes.length} tapes?`}</AlertDialog.Title>
           <AlertDialog.Description className="dialog-desc">
-            {one ? "The tape and its sidecars" : "These tapes and their sidecars"} are removed from disk ({files.length} file{files.length === 1 ? "" : "s"},{" "}
-            {bytes(total)}). This cannot be undone.
+            {one ? "The tape and its sidecars" : "These tapes and their sidecars"}{" "}
+            {inStore ? `are reset in the tape store (${files.length} tape${files.length === 1 ? "" : "s"}, ${amount(files)})` : `are removed from disk (${files.length} file${files.length === 1 ? "" : "s"}, ${amount(files)})`}.
+            This cannot be undone.
           </AlertDialog.Description>
           {running.length > 0 && (
             <p className="dialog-warn">
@@ -171,7 +180,7 @@ function DeleteDialog({ tapes, onClose, onDeleted }: { tapes: TapeSummary[]; onC
             {files.map((f) => (
               <li key={f.name}>
                 <span className="mono">{f.name}</span>
-                <span className="size">{bytes(f.size)}</span>
+                <span className="size">{amount([f])}</span>
               </li>
             ))}
           </ul>

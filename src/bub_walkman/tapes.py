@@ -81,11 +81,15 @@ def read_all(path: Path) -> tuple[list[Entry], int]:
 
 
 def read_spill(path: Path, handle: str) -> dict[str, Any]:
-    """Collect the chunks of one spilled tool output from a spill sidecar tape."""
+    """Collect the chunks of one spilled tool output from a spill sidecar tape file."""
+    return collect_spill(read_all(path)[0], handle)
+
+
+def collect_spill(entries: list[Entry], handle: str) -> dict[str, Any]:
+    """Collect the chunks of one spilled tool output from the entries of a spill sidecar tape."""
     chunks: dict[int, str] = {}
     current: int | None = None
     prefix = f"spill/{handle}/chunk/"
-    entries, _ = read_all(path)
     for entry in entries:
         kind = entry.get("kind")
         payload = entry.get("payload") or {}
@@ -150,11 +154,15 @@ def _short_prompt(prompt: str) -> str:
 
 
 def _scan(path: Path, size: int) -> TapeSummary:
+    return scan_entries(_tail_entries(path, size))
+
+
+def scan_entries(entries: list[Entry]) -> TapeSummary:
     """What the tail of a tape says about its latest turn: whether it is still open, and its prompt."""
     open_turn: bool | None = None
     prompt = ""
     last = ""
-    for entry in _tail_entries(path, size):
+    for entry in entries:
         last = str(entry.get("date") or last)
         if entry.get("kind") != "event":
             continue
@@ -171,6 +179,17 @@ def _scan(path: Path, size: int) -> TapeSummary:
             case "loop.finish":
                 open_turn = False
     return {"open": bool(open_turn), "prompt": prompt, "last": last}
+
+
+def tape_status(open_turn: bool, age: float) -> str:
+    """running: an open turn written to recently; recent: written to within the hour; else idle."""
+    return "running" if open_turn and age < RUNNING_WINDOW else "recent" if age < RECENT_WINDOW else "idle"
+
+
+def sort_summaries(summaries: list[TapeSummary]) -> list[TapeSummary]:
+    rank = {"running": 0, "recent": 1, "idle": 2}
+    summaries.sort(key=lambda t: (rank[t["status"]], -t["mtime"]))
+    return summaries
 
 
 class TapeDirectory:
@@ -221,8 +240,7 @@ class TapeDirectory:
                     continue
                 self._cache[path] = cached
             scan = cached[1]
-            age = now - st.st_mtime
-            status = "running" if scan["open"] and age < RUNNING_WINDOW else "recent" if age < RECENT_WINDOW else "idle"
+            status = tape_status(scan["open"], now - st.st_mtime)
             result.append(
                 {
                     "name": path.stem,
@@ -238,9 +256,7 @@ class TapeDirectory:
             )
         for gone in self._cache.keys() - seen:
             del self._cache[gone]
-        rank = {"running": 0, "recent": 1, "idle": 2}
-        result.sort(key=lambda t: (rank[t["status"]], -t["mtime"]))
-        return result
+        return sort_summaries(result)
 
     def delete(self, names: list[str], force: bool = False) -> tuple[list[str], dict[str, str]]:
         """Delete tapes with all their sidecars. Running tapes are skipped unless ``force``.

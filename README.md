@@ -13,6 +13,7 @@ uvx bub-walkman ~/.bub/tapes/<tape>.jsonl
 When installed into Bub's environment (for example `bub install bub-walkman`), `bub-walkman` also works as a Bub plugin via `bub walkman <tape>`.
 
 - **Tape directory**: `bub.home / "tapes"` when Bub is installed, otherwise `$BUB_HOME/tapes` (default `~/.bub/tapes`).
+- **Other tape stores**: as `bub walkman`, tapes come from the tape store Bub is configured with (the `provide_tape_store` hook), so tapes kept by a store plugin (a database, for example) work too. Such a store has no files: the list shows entry counts instead of sizes, a followed tape is re-read every second, and deleting a tape resets it and its sidecars in the store. Bub's default file store is still read from the tape directory.
 - **Server**: starts a local server at `http://localhost:7357` by default (or a free port if `7357` is taken) and opens the page in the browser.
 - **Options**: `--host`, `--port`, `--no-open`, `--version`.
 

@@ -421,7 +421,7 @@ export default function App({ name: tapeName, onNavigate }: { name: string; onNa
                   <b>{tokens(tl.stats.output)}</b> out tokens
                 </span>
                 {tl.stats.first != null && tl.stats.last != null && <span>{duration(tl.stats.last - tl.stats.first)} span</span>}
-                {tape.info && <span>{bytes(tape.info.size)}</span>}
+                {tape.info?.size != null && <span>{bytes(tape.info.size)}</span>}
               </div>
             </div>
             <button
