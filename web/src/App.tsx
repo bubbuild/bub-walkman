@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ItemDetail, TurnList, type Focus, type ViewOptions } from "./components/Timeline";
+import { ItemDetail, Stream, TurnList, type Focus, type ViewOptions } from "./components/Timeline";
 import { AnchorPicker, CheckField, Segmented, SettingsPopover, SpeedSelect } from "./components/controls";
 import { Toggle } from "@base-ui/react/toggle";
 import { SearchPanel } from "./components/Search";
 import { Brand, TapeCrumbs } from "./components/Tapes";
-import { ArrowDown, ChevronLeft, ChevronRight, Pause, Play, Search as SearchIcon, SkipEnd, SkipStart } from "./components/icons";
+import { ArrowDown, ChevronLeft, ChevronRight, Pause, Play, Search as SearchIcon, Sidebar, SkipEnd, SkipStart } from "./components/icons";
 import { bytes, clock, duration, timeOfDay, tokens } from "./format";
 import { NowContext, usePersistent, useTape, useTicker } from "./hooks";
 import {
@@ -50,6 +50,26 @@ export default function App({ name: tapeName, onNavigate }: { name: string; onNa
   const speed = SPEEDS.includes(storedSpeed) ? storedSpeed : 4; // a speed saved before the list changed
   const [skipIdle, setSkipIdle] = usePersistent<boolean>("skipIdle", true);
   const [autoscroll, setAutoscroll] = usePersistent<boolean>("autoscroll", true);
+  // "split": turn list | selected turn; "single": every turn in full in one column.
+  const [layout, setLayout] = usePersistent<"split" | "single">("layout", "split");
+  const single = layout === "single";
+  // Turns collapsed in one column (new turns arrive expanded). Item ids restart when the tape is reset.
+  const [collapsed, setCollapsed] = useState<{ ids: ReadonlySet<string>; epoch: number }>({ ids: new Set(), epoch: 0 });
+  const collapsedIds = collapsed.epoch === tape.epoch ? collapsed.ids : new Set<string>();
+  const toggleTurn = useCallback(
+    (id: string) =>
+      setCollapsed((c) => {
+        const ids = new Set(c.epoch === tape.epoch ? c.ids : []);
+        if (!ids.delete(id)) ids.add(id);
+        return { ids, epoch: tape.epoch };
+      }),
+    [tape.epoch],
+  );
+  const expand = useCallback(
+    (id: string | undefined) =>
+      id && setCollapsed((c) => (c.ids.has(id) ? { ids: new Set([...c.ids].filter((x) => x !== id)), epoch: c.epoch } : c)),
+    [],
+  );
   const viewOpts = useMemo(() => ({ ...DEFAULT_OPTS, ...opts }), [opts]);
 
   useEffect(() => {
@@ -198,16 +218,18 @@ export default function App({ name: tapeName, onNavigate }: { name: string; onNa
     else if (tl.count) setBehind(true);
   }, [tl.version, follow]); // eslint-disable-line react-hooks/exhaustive-deps
   // Another item selected: a followed turn opens at its newest step, a picked one at its top.
-  // (A focus request scrolls on its own, see below.)
+  // In one column every item is there already: scroll to the picked one. (A focus request scrolls on its own, see below.)
   const selectedId = selected?.id;
   useLayoutEffect(() => {
     const el = scroller.current;
     if (!el || sel.kind === "entry") return;
     stick.current = following;
     setBehind(false);
-    el.scrollTop = following ? el.scrollHeight : 0;
+    if (following) el.scrollTop = el.scrollHeight;
+    else if (!single) el.scrollTop = 0;
+    else el.querySelector(`[id="${CSS.escape(selectedId ?? "")}"]`)?.scrollIntoView({ block: "start" });
     listRef.current?.querySelector(`[data-item="${selectedId}"]`)?.scrollIntoView({ block: "nearest" });
-  }, [selectedId, following]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedId, following, single]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (sel.kind === "entry") listRef.current?.querySelector(`[data-item="${selectedId}"]`)?.scrollIntoView({ block: "nearest" });
   }, [selectedId, sel]);
@@ -221,9 +243,13 @@ export default function App({ name: tapeName, onNavigate }: { name: string; onNa
     (item: Item) => {
       setSel(item.id === latest?.id ? { kind: "follow" } : { kind: "item", id: item.id });
       setShowDetail(true);
+      expand(item.id);
     },
-    [latest],
+    [latest, expand],
   );
+
+  const turnIds = useMemo(() => tl.items.filter((it) => it.type === "turn").map((it) => it.id), [tl, tl.version]); // eslint-disable-line react-hooks/exhaustive-deps
+  const allCollapsed = turnIds.length > 0 && turnIds.every((id) => collapsedIds.has(id));
 
   // -- anchors ----------------------------------------------------------------------
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -235,13 +261,14 @@ export default function App({ name: tapeName, onNavigate }: { name: string; onNa
       stick.current = false; // don't let follow-scrolling yank the view away
       setSel({ kind: "entry", i });
       setShowDetail(true);
+      expand(resolveSelection(tl.items, { kind: "entry", i }, null)?.id); // in one column the turn may be collapsed
       if (mode === "replay") {
         setPlaying(false);
         seekIndex(i);
       }
       setFocus((f) => ({ i, n: (f?.n ?? 0) + 1, ...extra }));
     },
-    [mode, seekIndex],
+    [mode, seekIndex, tl, expand],
   );
   const goAnchor = useCallback((i: number) => goEntry(i), [goEntry]);
   const stepAnchor = useCallback(
@@ -334,11 +361,18 @@ export default function App({ name: tapeName, onNavigate }: { name: string; onNa
   const stepItem = useCallback(
     (dir: 1 | -1) => {
       const turns = tl.items.filter((it) => it.type === "turn");
-      const at = turns.findIndex((t) => t.id === selected?.id);
+      let current = selected?.id;
+      if (single && scroller.current) {
+        // In one column the reader scrolls freely: step from the turn at the top of the view.
+        const top = scroller.current.getBoundingClientRect().top + 40; // a turn scrolled to sits just below the top
+        const shown = [...scroller.current.querySelectorAll<HTMLElement>(".stream > .turn-detail")];
+        current = shown.findLast((el) => el.getBoundingClientRect().top <= top)?.id ?? (dir > 0 ? undefined : shown[0]?.id);
+      }
+      const at = turns.findIndex((t) => t.id === current);
       const next = turns[at < 0 ? (dir > 0 ? 0 : turns.length - 1) : at + dir];
       if (next) pick(next);
     },
-    [tl, selected, pick],
+    [tl, selected, pick, single],
   );
 
   // -- keyboard ---------------------------------------------------------------------
@@ -364,6 +398,7 @@ export default function App({ name: tapeName, onNavigate }: { name: string; onNa
       else if (key === "]") stepAnchor(1);
       else if (key === "[") stepAnchor(-1);
       else if (key === "l" || key === "L") setMode(mode === "live" ? "replay" : "live");
+      else if (key === "\\") setLayout(single ? "split" : "single");
       else return;
       e.preventDefault();
       // Handled shortcuts win over focused widgets (e.g. arrow-key focus moves in the mode toggle group).
@@ -371,7 +406,7 @@ export default function App({ name: tapeName, onNavigate }: { name: string; onNa
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [togglePlay, jump, stepAnchor, stepItem, mode, total, setMode, openSearch]);
+  }, [togglePlay, jump, stepAnchor, stepItem, mode, total, setMode, openSearch, single, setLayout]);
 
   // -- derived view bits --------------------------------------------------------------
   const turns = tl.turns;
@@ -425,6 +460,16 @@ export default function App({ name: tapeName, onNavigate }: { name: string; onNa
               </div>
             </div>
             <button
+              className="icon-btn square layout-btn"
+              data-active={!single || undefined}
+              onClick={() => setLayout(single ? "split" : "single")}
+              title={single ? "Show the turn list (\\)" : "One column: all turns in full (\\)"}
+              aria-label="Turn list"
+              aria-pressed={!single}
+            >
+              <Sidebar />
+            </button>
+            <button
               className="icon-btn square search-btn"
               data-active={searchOpen || undefined}
               onClick={() => (searchOpen ? setSearchOpen(false) : openSearch())}
@@ -470,28 +515,49 @@ export default function App({ name: tapeName, onNavigate }: { name: string; onNa
               </div>
               <hr />
               <div className="hint">
-                <kbd>/</kbd> search · <kbd>Space</kbd> play/pause · <kbd>←</kbd>/<kbd>→</kbd> step · <kbd>⇧</kbd>+arrows turn · <kbd>J</kbd>/<kbd>K</kbd> turn list · <kbd>[</kbd>/<kbd>]</kbd> anchor · <kbd>L</kbd> live on/off
+                <kbd>/</kbd> search · <kbd>Space</kbd> play/pause · <kbd>←</kbd>/<kbd>→</kbd> step · <kbd>⇧</kbd>+arrows turn · <kbd>J</kbd>/<kbd>K</kbd> turns · <kbd>{"\\"}</kbd> layout · <kbd>[</kbd>/<kbd>]</kbd> anchor · <kbd>L</kbd> live on/off
               </div>
             </SettingsPopover>
           </header>
 
           <div className={`content ${searchOpen ? "with-search" : ""}`}>
-          <div className={`panes ${showDetail ? "show-detail" : ""}`}>
-          <aside className={`list-pane ${anchors.length ? "has-head" : ""}`} ref={listRef}>
-            {anchors.length > 0 && (
-              <div className="list-head">
-                <AnchorPicker anchors={anchors} passed={(a) => mode === "replay" && a.i < shown} onPick={goAnchor} />
-              </div>
-            )}
-            <TurnList items={tl.items} opts={viewOpts} selected={selected?.id ?? null} onSelect={pick} version={tl.version} />
-          </aside>
+          <div className={`panes ${single ? "single" : showDetail ? "show-detail" : ""}`}>
+          {!single && (
+            <aside className={`list-pane ${anchors.length ? "has-head" : ""}`} ref={listRef}>
+              {anchors.length > 0 && (
+                <div className="list-head">
+                  <AnchorPicker anchors={anchors} passed={(a) => mode === "replay" && a.i < shown} onPick={goAnchor} />
+                </div>
+              )}
+              <TurnList items={tl.items} opts={viewOpts} selected={selected?.id ?? null} onSelect={pick} version={tl.version} />
+            </aside>
+          )}
           <section className="detail-pane timeline-wrap" ref={scroller} onScroll={onScroll}>
-            <button className="back" onClick={() => setShowDetail(false)}>
-              <ChevronLeft size={14} />
-              Turns
-            </button>
+            {single ? (
+              tl.items.length > 0 && (
+                <div className="stream-head">
+                  {turnIds.length > 1 && (
+                    <button
+                      className="btn fold-all"
+                      onClick={() => setCollapsed({ ids: new Set(allCollapsed ? [] : turnIds), epoch: tape.epoch })}
+                    >
+                      <ChevronRight size={14} className={allCollapsed ? "" : "open"} />
+                      {allCollapsed ? "Expand all" : "Collapse all"}
+                    </button>
+                  )}
+                  {anchors.length > 0 && <AnchorPicker anchors={anchors} passed={(a) => mode === "replay" && a.i < shown} onPick={goAnchor} />}
+                </div>
+              )
+            ) : (
+              <button className="back" onClick={() => setShowDetail(false)}>
+                <ChevronLeft size={14} />
+                Turns
+              </button>
+            )}
             <div className="detail">
-              <ItemDetail item={selected} v={selected?.v ?? 0} opts={viewOpts} />
+              {single ? (
+                <Stream items={tl.items} opts={viewOpts} version={tl.version} collapsed={collapsedIds} onToggle={toggleTurn} />
+              ) : <ItemDetail item={selected} v={selected?.v ?? 0} opts={viewOpts} />}
             </div>
             {!tl.items.length && tape.connection !== "loading" && (
               <div className="empty">

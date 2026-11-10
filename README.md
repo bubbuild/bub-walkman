@@ -40,10 +40,11 @@ The page has two panes (on narrow screens, the panes take turns with a back butt
 - **Turn selection**:
   - Follows the latest turn by default: the one being written when live, or the one at the playhead when replaying.
   - Click an older turn to stay on it; click the newest one, press **↓ Latest**, or press play to follow again.
+- **One column**: the sidebar button in the top bar (or `\`) hides the turn list and shows every turn in full, one after another, for reading a tape top to bottom. Click a turn's title to fold it to its header, or use **Collapse all** / **Expand all**; jumping to an anchor or a search result unfolds the turn it lands in. The layout choice is remembered.
 
 ## Anchors
 
-- Listed in the **Anchors** picker at the top of the turn list and shown as purple ticks on the track.
+- Listed in the **Anchors** picker at the top of the turn list (top right in one column) and shown as purple ticks on the track.
 - Picking an anchor selects the turn that contains it and scrolls to it.
 - In replay, picking an anchor also seeks there and pauses, so playback continues from that anchor.
 
@@ -79,9 +80,10 @@ Without a tape argument, the page lists every tape in Bub's tape directory, refr
 | `←` / `→`              | Previous / next step             |
 | `⇧←` / `⇧→`            | Previous / next turn             |
 | `Home` / `End`         | Jump to the start / end (replay) |
-| `J` / `K`              | Next / previous turn in the list |
+| `J` / `K`              | Next / previous turn             |
 | `[` / `]`              | Previous / next anchor           |
 | `L`                    | Live on / off                    |
+| `\`                    | One column / turn list           |
 
 ## Development
 
