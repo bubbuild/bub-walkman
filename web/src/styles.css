@@ -223,6 +223,20 @@ kbd { font-family: var(--mono); font-size: 12px; line-height: 16px; border: 1px 
 .detail-pane { flex: 1; min-width: 0; }
 .detail { max-width: 980px; margin: 0 auto; padding: 20px 28px 120px; }
 .back { display: none; }
+/* one column: every item in full, separated by a rule; the anchor picker sticks above them */
+.stream > * + * { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--line); }
+.stream-head { position: sticky; top: 0; z-index: 3; display: flex; justify-content: flex-end; max-width: 980px; margin: 0 auto; padding: 10px 28px 0; pointer-events: none; }
+.stream-head { gap: 8px; }
+.stream-head > * { pointer-events: auto; box-shadow: var(--pop-shadow); background: var(--panel); }
+.fold-all { gap: 6px; }
+.fold-all .icon { transition: transform .15s; }
+.fold-all .icon.open { transform: rotate(90deg); }
+/* a turn header that folds the turn (one column) */
+.turn-toggle { display: flex; align-items: flex-start; gap: 6px; width: 100%; margin: 0 0 0 -22px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.turn-toggle .disc { flex: none; margin-top: 5px; color: var(--faint); transform: rotate(90deg); transition: transform .15s; }
+.turn-toggle:hover .disc { color: var(--text); }
+.turn-detail.collapsed .turn-toggle .disc { transform: none; }
+.turn-detail.collapsed .turn-head { padding-bottom: 0; }
 
 .turn-list { padding: 0 8px 40px; }
 /* anchor picker pinned at the top of the turn list; the day headers stick right below it */
@@ -555,7 +569,9 @@ div.tools > .tool + .tool { border-top: 1px solid var(--line); }
   .transport { flex-wrap: wrap; gap: 8px 12px; padding: 8px 12px; }
   /* one pane at a time: the list, or the selected item with a way back */
   .list-pane { width: auto; flex: 1; border-right: 0; }
-  .panes.show-detail .list-pane, .panes:not(.show-detail) .detail-pane { display: none; }
+  .panes.show-detail .list-pane, .panes:not(.show-detail, .single) .detail-pane { display: none; }
+  .stream-head { padding: 8px 16px 0; }
+  .turn-toggle { margin-left: 0; }
   .back { display: inline-flex; align-items: center; gap: 4px; margin: 12px 0 0 8px; padding: 4px 8px; border: 0; border-radius: var(--r); background: none; color: var(--muted); font-size: 13px; cursor: pointer; }
   .back:hover { background: var(--hover); color: var(--text); }
   .detail { padding: 8px 16px 100px; }

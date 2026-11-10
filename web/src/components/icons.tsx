@@ -115,6 +115,14 @@ export const Settings = (p: IconProps) => (
   </Icon>
 );
 
+/** A window with a sidebar: the two-pane layout (turn list beside the selected turn). */
+export const Sidebar = (p: IconProps) => (
+  <Icon {...p}>
+    <rect {...ns} x="2" y="3" width="12" height="10" rx="2" />
+    <path {...ns} d="M6.5 3v10" />
+  </Icon>
+);
+
 export const Search = (p: IconProps) => (
   <Icon {...p}>
     <circle {...ns} cx="7" cy="7" r="4.25" />

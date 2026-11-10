@@ -111,10 +111,48 @@ const ListRow = memo(function ListRow({ item, active, onSelect }: { item: Item; 
   );
 });
 
-/** Right pane: the selected item in full. */
-export function ItemDetail({ item, opts }: { item: Item | null; v: number; opts: ViewOptions }) {
+const StreamItem = memo(ItemDetail);
+
+/** Single-column layout: every item one after another, turns collapsible (re-rendering only items that changed). */
+export function Stream({
+  items,
+  opts,
+  version,
+  collapsed,
+  onToggle,
+}: {
+  items: Item[];
+  opts: ViewOptions;
+  version: number;
+  collapsed: ReadonlySet<string>;
+  onToggle: (id: string) => void;
+}) {
+  return (
+    <div className="stream" data-version={version}>
+      {items.map((item) =>
+        item.type === "misc" && item.kind === "event" && !opts.events ? null : (
+          <StreamItem key={item.id} item={item} v={item.v} opts={opts} collapsed={collapsed.has(item.id)} onToggle={onToggle} />
+        ),
+      )}
+    </div>
+  );
+}
+
+/** Right pane: the selected item in full. In one column, a turn can be collapsed to its header (`onToggle`). */
+export function ItemDetail({
+  item,
+  opts,
+  collapsed = false,
+  onToggle,
+}: {
+  item: Item | null;
+  v: number;
+  opts: ViewOptions;
+  collapsed?: boolean;
+  onToggle?: (id: string) => void;
+}) {
   if (!item) return null;
-  if (item.type === "turn") return <TurnDetail turn={item} opts={opts} />;
+  if (item.type === "turn") return <TurnDetail turn={item} opts={opts} collapsed={collapsed} onToggle={onToggle} />;
   return (
     <article className="detail-misc" id={item.id} data-entry={item.i0}>
       <div className="detail-time">
@@ -131,18 +169,28 @@ export function ItemDetail({ item, opts }: { item: Item | null; v: number; opts:
   );
 }
 
-function TurnDetail({ turn, opts }: { turn: Turn; opts: ViewOptions }) {
+function TurnDetail({ turn, opts, collapsed, onToggle }: { turn: Turn; opts: ViewOptions; collapsed: boolean; onToggle?: (id: string) => void }) {
   const prompt = parsePrompt(turn.prompt);
   const running = turn.status === "running";
   const lastStep = turn.steps[turn.steps.length - 1];
+  const headline = prompt.headline || <span className="muted">(no prompt)</span>;
   return (
-    <article className={`turn-detail ${turn.status}`} id={turn.id} data-entry={turn.i0}>
+    <article className={`turn-detail ${turn.status} ${collapsed ? "collapsed" : ""}`} id={turn.id} data-entry={turn.i0}>
       <header className="turn-head">
         <div className="detail-time">
           {dayOf(turn.t0)} {timeOfDay(turn.t0)}
           {turn.t1 != null && !running && ` – ${timeOfDay(turn.t1)}`}
         </div>
-        <h2 className="prompt">{prompt.headline || <span className="muted">(no prompt)</span>}</h2>
+        {onToggle ? (
+          <h2 className="prompt">
+            <button className="turn-toggle" onClick={() => onToggle(turn.id)} aria-expanded={!collapsed} title={collapsed ? "Expand turn" : "Collapse turn"}>
+              <ChevronRight className="disc" size={16} />
+              <span>{headline}</span>
+            </button>
+          </h2>
+        ) : (
+          <h2 className="prompt">{headline}</h2>
+        )}
         <div className="meta">
           {turn.status !== "ok" && <span className={`state ${turn.status}`}>{turn.status}</span>}
           {turn.model && <span className="mono">{turn.model}</span>}
@@ -167,8 +215,9 @@ function TurnDetail({ turn, opts }: { turn: Turn; opts: ViewOptions }) {
             {turn.error}
           </div>
         )}
-        {running ? <LiveWaterfall turn={turn} /> : <Waterfall turn={turn} now={turn.t1 ?? turn.t0} />}
+        {collapsed ? null : running ? <LiveWaterfall turn={turn} /> : <Waterfall turn={turn} now={turn.t1 ?? turn.t0} />}
       </header>
+      {!collapsed && (
       <div className="steps">
         {prompt.body !== prompt.headline || prompt.body.length > 600 ? (
           <details className="block sys full-prompt">
@@ -193,6 +242,7 @@ function TurnDetail({ turn, opts }: { turn: Turn; opts: ViewOptions }) {
           </div>
         )}
       </div>
+      )}
     </article>
   );
 }
